@@ -31,6 +31,7 @@ public class Player {
 
 		// Sort the cards by rank using LINQ if this is a human
 		if (type == PlayerType.human) {
+<<<<<<< HEAD
 			CardBartok[] cards = hand.ToArray(); // Copy hand to a new array
 
 			cards = cards.OrderBy( cd => cd.rank ).ToArray ();
@@ -42,6 +43,21 @@ public class Player {
 		eCB.SetSortingLayerName ("10"); // This sorts the moving card to the top
 		eCB.eventualSortLayer = handSlotDef.layerName;
 
+=======
+			CardBartok[] cards = hand.ToArray (); // Copy hand to a new array
+
+			// Below is the LINQ call that works on the array of CardBartoks.
+			// It is similar to doing a foreach(CardBartok cd in cards)
+			// and sorting them by rank. It then returns a sorted array
+			cards = cards.OrderBy (cd => cd.rank).ToArray();
+
+			// Convert the array CardBartok[] back to a List<CardBartok>
+			hand = new List<CardBartok>(cards);
+			// Note: LINQ operations can be a bit slow (like it could take a
+			// couple of milliseconds), but since we're only doing it once
+			// every turn, it isn't a problem
+		}
+>>>>>>> origin/master
 		FanHand ();
 		return (eCB);
 	}
@@ -90,8 +106,14 @@ public class Player {
 			// Set the localPosition and rotation of the ith card in the hand
 			hand[i].MoveTo (pos, rotQ); // Tell CardBartok to interpolate
 			hand[i].state = CBState.toHand;
+<<<<<<< HEAD
 
 			/*
+=======
+			// ^ After the move, CardBartok will set the state to CBState.hand
+
+			/* 
+>>>>>>> origin/master
 			hand[i].transform.localPosition = pos;
 			hand[i].transform.rotation = rotQ;
 			hand[i].state = CBState.hand;
