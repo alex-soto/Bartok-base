@@ -28,6 +28,20 @@ public class Player {
 
 		// Add the card to the hand
 		hand.Add (eCB);
+
+		// Sort the cards by rank using LINQ if this is a human
+		if (type == PlayerType.human) {
+			CardBartok[] cards = hand.ToArray(); // Copy hand to a new array
+
+			cards = cards.OrderBy( cd => cd.rank ).ToArray ();
+
+			// Convert the array CardBartok[] back to a List<CardBartok>
+			hand = new List<CardBartok>(cards);
+		}
+
+		eCB.SetSortingLayerName ("10"); // This sorts the moving card to the top
+		eCB.eventualSortLayer = handSlotDef.layerName;
+
 		FanHand ();
 		return (eCB);
 	}
@@ -74,16 +88,22 @@ public class Player {
 			pos.z = -0.5f*i;
 
 			// Set the localPosition and rotation of the ith card in the hand
+			hand[i].MoveTo (pos, rotQ); // Tell CardBartok to interpolate
+			hand[i].state = CBState.toHand;
+
+			/*
 			hand[i].transform.localPosition = pos;
 			hand[i].transform.rotation = rotQ;
 			hand[i].state = CBState.hand;
+			*/
 
 			// This uses a comparison operator to return a true or false bool
 			// So, if (type == PlayerType.human), hand[i].faceUp is set to true
 			hand[i].faceUp = (type == PlayerType.human);
 
 			// Set the SortOrder of the cards so that they overlap properly
-			hand[i].SetSortOrder (i*4);
+			hand[i].eventualSortOrder = i * 4;
+			//hand[i].SetSortOrder (i*4);
 		}
 	}
 
