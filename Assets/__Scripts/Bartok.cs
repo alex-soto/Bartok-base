@@ -40,11 +40,18 @@ public class Bartok : MonoBehaviour {
 	public TurnPhase phase = TurnPhase.idle;
 	public GameObject turnLight;
 
+	public GameObject GTGameOver;
+	public GameObject GTRoundResult;
+
 	void Awake(){
 		S = this;
 
 		// Find the TurnLight by name
 		turnLight = GameObject.Find ("TurnLight");
+		GTGameOver = GameObject.Find ("GTGameOver");
+		GTRoundResult = GameObject.Find ("GTRoundResult");
+		GTGameOver.SetActive (false);
+		GTRoundResult.SetActive (false);
 	}
 
 	void Start(){
@@ -153,9 +160,45 @@ public class Bartok : MonoBehaviour {
 		PassTurn (1);
 	}
 
-	void PassTurn (int i)
-	{
-		throw new System.NotImplementedException ();
+	public void PassTurn (int num=-1){
+		// If no number was passed in, pick the next player
+		if (num == -1) {
+			int ndx = players.IndexOf (CURRENT_PLAYER);
+			num = (ndx+1)%4;
+		}
+		int lastPlayerNum = -1;
+		if (CURRENT_PLAYER != null) {
+			lastPlayerNum = CURRENT_PLAYER.playerNum;
+			// Check for Game Over and need to reshuffle discards
+			if (CheckGameOver()) 
+				return;
+		}
+		CURRENT_PLAYER = players [num];
+		phase = TurnPhase.pre;
+
+		CURRENT_PLAYER.TakeTurn ();
+
+		// Move the TurnLight to shine on the new CURRENT_PLAYER
+		Vector3 lPos = CURRENT_PLAYER.handSlotDef.pos + Vector3.back * 5;
+		turnLight.transform.position = lPos;
+
+		// Report the turn passing
+		Utils.tr (Utils.RoundToPlaces(Time.time), "Bartok.PassTurn()", 
+		          "Old: " + lastPlayerNum,"New: "+CURRENT_PLAYER.playerNum);
+	}
+
+	// ValidPlay verifies that the card chosen can be played on the discard pile
+	public bool ValidPlay(CardBartok cb){
+		// It's a valid play if the rank is the same
+		if (cb.rank == targetCard.rank)
+			return(true);
+
+		// It's a valid play if the suit is the same
+		if (cb.suit == targetCard.suit)
+			return(true);
+
+		// Otherwise, return false
+		return(false);
 	}
 
 	// This makes a new card the target
@@ -191,6 +234,7 @@ public class Bartok : MonoBehaviour {
 		return(cd);
 	}
 
+	/*
 	// This Update method is used to test adding cards to players' hands
 	void Update(){
 		if (Input.GetKeyDown (KeyCode.Alpha1)) {
@@ -206,5 +250,75 @@ public class Bartok : MonoBehaviour {
 			players[3].AddCard (Draw ());
 		}
 	}
+	*/
 
+	public void CardClicked(CardBartok tCB){
+		// If it's not the human's turn, don't respond
+		if (CURRENT_PLAYER.type != PlayerType.human)
+			return;
+
+		// Act differently based on whether it was a card in hand
+		// or on the drawPile that was clicked
+		switch (tCB.state) {
+		case CBState.drawpile:
+			// Draw the top card, not necessarily the one clicked
+			CardBartok cb = CURRENT_PLAYER.AddCard(Draw ());
+			cb.callbackPlayer = CURRENT_PLAYER;
+			Utils.tr (Utils.RoundToPlaces(Time.time),"Bartok.CardClicked()","Draw",cb.name);
+			phase = TurnPhase.waiting;
+			break;
+		case CBState.hand:
+			// Check to see whether the card is valid
+			if (ValidPlay(tCB)){
+				CURRENT_PLAYER.RemoveCard(tCB);
+				MoveToTarget(tCB);
+				tCB.callbackPlayer = CURRENT_PLAYER;
+				Utils.tr (Utils.RoundToPlaces(Time.time), "Bartok.CardClicked()",
+				          "Play",tCB.name, targetCard.name+" is target");
+				phase = TurnPhase.waiting;
+			} else {
+				// Just ignore it
+				Utils.tr (Utils.RoundToPlaces(Time.time),"Bartok.CardClicked()",
+				          "Attempted to Play",tCB.name,targetCard.name+" is target");
+			}
+			break;
+		}
+	}
+
+	public bool CheckGameOver(){
+		// See if we need to reshuffle the discard pile into the draw pile
+		if (drawPile.Count == 0){
+			List<Card> cards = new List<Card>();
+			foreach(CardBartok cb in discardPile){
+				cards.Add(cb);
+			}
+			discardPile.Clear();
+			Deck.Shuffle(ref cards);
+			drawPile = UpgradeCardsList (cards);
+			ArrangeDrawPile ();
+		}
+
+		// Check to see if the current player has won
+		if (CURRENT_PLAYER.hand.Count == 0) {
+			// The current player has won!
+			if (CURRENT_PLAYER.type == PlayerType.human){
+				GTGameOver.guiText.text = "You Won!";
+				GTRoundResult.guiText.text = "";
+			} else {
+				GTGameOver.guiText.text = "Game Over";
+				GTRoundResult.guiText.text = "Player " + CURRENT_PLAYER.playerNum + " won";
+			}
+			GTGameOver.SetActive(true);
+			GTRoundResult.SetActive(true);
+			phase = TurnPhase.gameOver;
+			Invoke ("RestartGame", 1);
+			return(true);
+		}
+		return(false);
+	}
+
+	public void RestartGame(){
+		CURRENT_PLAYER = null;
+		Application.LoadLevel ("__Bartok_Scene_0");
+	}
 }
